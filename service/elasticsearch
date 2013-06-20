@@ -84,7 +84,7 @@ WAIT_FOR_STARTED_TIMEOUT=120
 # NOTE - This will set the user which is used to run the Wrapper as well as
 #  the JVM and is not useful in situations where a privileged resource or
 #  port needs to be allocated prior to the user being changed.
-#RUN_AS_USER=
+RUN_AS_USER=elasticsearch
 
 # Specify the number of open files ulimit for the above user
 # recommended value: 32000
@@ -1502,6 +1502,10 @@ showUsage() {
 docommand() {
     case "$COMMAND" in
         'console')
+
+            # Export AWS user-data variables
+            export_user_data
+ 
             checkUser touchlock "$@"
             if [ ! -n "$FIXED_COMMAND" ] ; then
                 shift
@@ -1510,6 +1514,10 @@ docommand() {
             ;;
     
         'start')
+
+            # Export AWS user-data variables
+            export_user_data
+ 
             if [ "$DIST_OS" = "macosx" -a -f "/Library/LaunchDaemons/${APP_PLIST}" ] ; then
                 macosxstart
             elif [ "$DIST_OS" = "linux" -a -f "/etc/init/${APP_NAME}.conf" ] ; then
@@ -1609,6 +1617,23 @@ docommand() {
             showUsage "$COMMAND"
             ;;
     esac
+}
+
+export_user_data() {
+        TMPFILE=`tempfile`
+        USERDATA=$ES_HOME/config/user-data.env
+        curl 2>/dev/null http://169.254.169.254/latest/user-data > $TMPFILE
+        if test $? -eq 0 -a -s $TMPFILE; then
+                mv -f $TMPFILE $USERDATA
+                chown $RUN_AS_USER $USERDATA
+        else
+                rm $TMPFILE
+        fi
+        if test ! -e $USERDATA; then
+                exit 1
+        fi
+        . $USERDATA
+        export ES_CLUSTER_NAME ES_CLOUD_AWS_REGION ES_CLOUD_AWS_ACCESS_KEY ES_CLOUD_AWS_SECRET_KEY ES_DISCOVERY_EC2_GROUPS ES_GATEWAY_S3_BUCKET
 }
 
 docommand "$@"
