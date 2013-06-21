@@ -1621,19 +1621,10 @@ docommand() {
 
 export_user_data() {
         TMPFILE=`tempfile`
-        USERDATA=$ES_HOME/config/user-data.env
-        curl 2>/dev/null http://169.254.169.254/latest/user-data > $TMPFILE
-        if test $? -eq 0 -a -s $TMPFILE; then
-                mv -f $TMPFILE $USERDATA
-                chown $RUN_AS_USER $USERDATA
-        else
-                rm $TMPFILE
-        fi
-        if test ! -e $USERDATA; then
-                exit 1
-        fi
-        . $USERDATA
+	ec2metadata --user-data > $TMPFILE
+	. $TMPFILE
         export ES_CLUSTER_NAME ES_CLOUD_AWS_REGION ES_CLOUD_AWS_ACCESS_KEY ES_CLOUD_AWS_SECRET_KEY ES_DISCOVERY_EC2_GROUPS ES_GATEWAY_S3_BUCKET
+	rm $TMPFILE
 }
 
 docommand "$@"
